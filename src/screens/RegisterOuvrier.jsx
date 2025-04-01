@@ -27,7 +27,8 @@ const RegisterOuvrier = () => {
     try {
       await registerUserToFirebase(user.numero, user.pseudo, user.code);
       localStorage.setItem('currentUser', JSON.stringify(user));
-      setStep(2); // ➜ Affiche le code avant de passer à la suite
+      localStorage.setItem('pseudo', user.pseudo); // Ajouté
+      setStep(2);
     } catch (error) {
       alert('Erreur lors de la création du compte.');
       console.error(error);

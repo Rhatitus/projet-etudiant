@@ -34,6 +34,7 @@ const AuthOuvrier = () => {
       }
 
       localStorage.setItem('currentUser', JSON.stringify(user));
+      localStorage.setItem('pseudo', user.pseudo); // Ajouté
       navigate('/chat-ouvrier');
     } catch (error) {
       console.error("Erreur lors de la connexion :", error);

@@ -20,12 +20,24 @@ const ChatOuvrier = () => {
   }, []);
 
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem('currentUser'));
+    const storedUserRaw = localStorage.getItem('currentUser');
 
-    if (!storedUser || !storedUser.pseudo) {
+    if (!storedUserRaw) {
+      console.log("❌ Aucun currentUser trouvé → redirection");
       navigate('/auth-ouvrier');
-    } else {
+      return;
+    }
+
+    try {
+      const storedUser = JSON.parse(storedUserRaw);
+      if (!storedUser.pseudo) {
+        console.log("❌ Pseudo absent dans currentUser → redirection");
+        navigate('/auth-ouvrier');
+        return;
+      }
+
       setPseudo(storedUser.pseudo);
+      console.log("✅ Pseudo chargé :", storedUser.pseudo);
 
       const fetchMessages = async () => {
         const messagesRecus = await getMessages();
@@ -39,7 +51,6 @@ const ChatOuvrier = () => {
         );
         setMessages(sorted);
 
-        // ✅ Notification et vibration si nouveau message du chef
         const last = sorted[sorted.length - 1];
         if (
           last &&
@@ -54,6 +65,9 @@ const ChatOuvrier = () => {
       fetchMessages();
       const interval = setInterval(fetchMessages, 1000);
       return () => clearInterval(interval);
+    } catch (e) {
+      console.error("Erreur parsing currentUser :", e);
+      navigate('/auth-ouvrier');
     }
   }, [navigate]);
 
@@ -83,20 +97,17 @@ const ChatOuvrier = () => {
   };
 
   const showNotification = (texte) => {
-    // 🔔 Notification visuelle
     if (Notification.permission === 'granted') {
       new Notification('📩 Nouveau message du chef', {
         body: texte,
-        icon: '/icon.png', // facultatif
+        icon: '/icon.png',
       });
     }
 
-    // 🔊 Son
     if (sonNotif.current) {
       sonNotif.current.play().catch(() => {});
     }
 
-    // 📳 Vibration
     if ('vibrate' in navigator) {
       navigator.vibrate([200]);
     }
@@ -161,7 +172,6 @@ const ChatOuvrier = () => {
         <div className="notif-bulle">✅ Message envoyé !</div>
       )}
 
-      {/* 🔊 Son de notif */}
       <audio ref={sonNotif} src="/sounds/notification.mp3" preload="auto" />
     </div>
   );

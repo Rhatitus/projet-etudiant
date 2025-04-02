@@ -8,6 +8,7 @@ const ChatOuvrier = () => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [notifVisible, setNotifVisible] = useState(false);
+  const [debugInfo, setDebugInfo] = useState('');
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
   const sonNotif = useRef(null);
@@ -21,8 +22,11 @@ const ChatOuvrier = () => {
 
   useEffect(() => {
     const storedUserRaw = localStorage.getItem('currentUser');
+    setDebugInfo(`localStorage.getItem('currentUser') = ${storedUserRaw}`);
+
     if (!storedUserRaw) {
       console.log("❌ Aucun currentUser → Redirection login");
+      setDebugInfo((prev) => prev + "\n❌ Aucun currentUser trouvé → redirection");
       navigate('/auth-ouvrier');
       return;
     }
@@ -31,12 +35,13 @@ const ChatOuvrier = () => {
       const user = JSON.parse(storedUserRaw);
       if (!user.pseudo) {
         console.log("❌ Pseudo manquant → Redirection login");
+        setDebugInfo((prev) => prev + "\n❌ Pseudo manquant → redirection");
         navigate('/auth-ouvrier');
         return;
       }
 
       setPseudo(user.pseudo);
-      console.log("✅ Pseudo chargé :", user.pseudo);
+      setDebugInfo((prev) => prev + `\n✅ Pseudo détecté : ${user.pseudo}`);
 
       const fetchMessages = async () => {
         const messagesRecus = await getMessages();
@@ -62,10 +67,11 @@ const ChatOuvrier = () => {
       };
 
       fetchMessages();
-      const interval = setInterval(fetchMessages, 10000); //  10 sec et non sec, regarder onSnapshot() a la place pour pas que sa saute 
+      const interval = setInterval(fetchMessages, 10000);
       return () => clearInterval(interval);
     } catch (e) {
       console.error("Erreur parsing localStorage :", e);
+      setDebugInfo((prev) => prev + "\n❌ Erreur parsing JSON localStorage");
       navigate('/auth-ouvrier');
     }
   }, [navigate]);
@@ -121,6 +127,9 @@ const ChatOuvrier = () => {
     return (
       <div style={{ textAlign: 'center', marginTop: '100px' }}>
         <h3>🔄 Chargement du chat...</h3>
+        <pre style={{ textAlign: 'left', maxWidth: '90%', margin: '0 auto', background: '#fff', color: '#000', padding: '10px', borderRadius: '12px' }}>
+          {debugInfo}
+        </pre>
       </div>
     );
   }

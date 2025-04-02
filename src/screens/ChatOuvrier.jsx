@@ -13,6 +13,7 @@ const ChatOuvrier = () => {
   const lastMessageId = useRef(null);
   const navigate = useNavigate();
 
+  // 🔐 Autoriser les notifications dès le début
   useEffect(() => {
     if (Notification.permission !== 'granted') {
       Notification.requestPermission().then((permission) => {
@@ -21,6 +22,7 @@ const ChatOuvrier = () => {
     }
   }, []);
 
+  // 🧠 Autoriser son + vibration après 1 clic
   useEffect(() => {
     const autoriserSonEtVib = () => {
       if (sonNotif.current) {
@@ -35,6 +37,7 @@ const ChatOuvrier = () => {
     return () => window.removeEventListener('click', autoriserSonEtVib);
   }, []);
 
+  // 🔁 Récupération utilisateur + messages
   useEffect(() => {
     const userRaw = localStorage.getItem("currentUser");
     console.log("📦 localStorage[currentUser] :", userRaw);
@@ -92,10 +95,12 @@ const ChatOuvrier = () => {
     }
   }, [navigate]);
 
+  // 📜 Scroll auto en bas
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // ✉️ Envoi message
   const envoyerMessage = async () => {
     if (message.trim() === '' || !pseudo) return;
 
@@ -142,8 +147,12 @@ const ChatOuvrier = () => {
     navigate('/auth-ouvrier');
   };
 
-  // ✅ Important : attendre la valeur de pseudo === null uniquement
-  if (pseudo === null) {
+  // ✅ Nouveau : utiliser pseudoFinal si `pseudo` pas encore chargé
+  const userRaw = localStorage.getItem("currentUser");
+  const user = userRaw ? JSON.parse(userRaw) : null;
+  const pseudoFinal = pseudo || (user && user.pseudo);
+
+  if (!pseudoFinal) {
     return (
       <div style={{ textAlign: 'center', marginTop: '100px' }}>
         <h3>🔄 Chargement du chat...</h3>
@@ -155,7 +164,7 @@ const ChatOuvrier = () => {
     <div className="page-container">
       <Header />
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-        <span><strong>👷 Connecté :</strong> {pseudo}</span>
+        <span><strong>👷 Connecté :</strong> {pseudoFinal}</span>
         <button onClick={deconnexion} style={styles.logout}>🔓 Déconnexion</button>
       </div>
 

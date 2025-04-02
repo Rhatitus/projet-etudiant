@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getMessages } from '../firebaseUtils';
+import { getMessages } from '../firebaseUtils'; 
 
 const CODE_CHEF = 'sekret123';
 
@@ -20,50 +20,43 @@ const ChatChef = () => {
     const updateDiscussions = async () => {
       const allMessages = await getMessages();
 
-      // Group messages by pseudo (only those sent to Chef)
-      const grouped = {};
+      // Grouper les messages par pseudo (hors "Chef")
+      const map = new Map();
 
-      allMessages.forEach((msg) => {
-        if (msg.destinataire === 'Chef') {
-          if (!grouped[msg.pseudo]) grouped[msg.pseudo] = [];
-          grouped[msg.pseudo].push(msg);
+      allMessages.forEach(msg => {
+        const isChef = msg.pseudo === 'Chef';
+        const destinataire = isChef ? msg.destinataire : msg.pseudo;
+        if (!map.has(destinataire)) {
+          map.set(destinataire, []);
         }
+        map.get(destinataire).push(msg);
       });
 
-      const list = Object.entries(grouped).map(([pseudo, messages]) => {
-        // Trier les messages par timestamp
-        const sortedMessages = messages.sort(
-          (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-        );
-
-        const lastMessage = sortedMessages[sortedMessages.length - 1];
-
-        const lastSeen = localStorage.getItem('lu_' + pseudo);
-        const nonLu = lastSeen !== lastMessage.timestamp;
+      const ouvriers = Array.from(map.entries()).map(([pseudo, messages]) => {
+        const lastMessage = messages[messages.length - 1];
+        const lastTimestamp = lastMessage?.timestamp || new Date().toISOString();
+        const lu = localStorage.getItem('lu_' + pseudo) === 'true';
 
         return {
           pseudo,
-          message: lastMessage.texte,
-          date: lastMessage.date,
-          timestamp: lastMessage.timestamp,
-          nonLu,
+          message: lastMessage?.texte || '',
+          date: lastMessage?.date || '',
+          timestamp: lastTimestamp,
+          nonLu: !lu && lastMessage?.pseudo !== 'Chef',
         };
       });
 
-      const sorted = list.sort(
-        (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
-      );
-
+      const sorted = ouvriers.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       setDiscussions(sorted);
     };
 
     updateDiscussions();
-    const interval = setInterval(updateDiscussions, 1000);
+    const interval = setInterval(updateDiscussions, 3000);
     return () => clearInterval(interval);
   }, []);
 
-  const openChat = (pseudo, timestamp) => {
-    localStorage.setItem('lu_' + pseudo, timestamp); // Marquer comme lu
+  const openChat = (pseudo) => {
+    localStorage.setItem('lu_' + pseudo, 'true');
     navigate(`/chat-chef/${pseudo}`);
   };
 
@@ -75,7 +68,7 @@ const ChatChef = () => {
         <div
           key={index}
           style={styles.discussionBox}
-          onClick={() => openChat(item.pseudo, item.timestamp)}
+          onClick={() => openChat(item.pseudo)}
         >
           <div style={styles.row}>
             <strong>{item.pseudo}</strong>

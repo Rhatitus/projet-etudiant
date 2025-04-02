@@ -10,38 +10,29 @@ const ChatOuvrier = () => {
   const [notifVisible, setNotifVisible] = useState(false);
   const [debugInfo, setDebugInfo] = useState('');
   const messagesEndRef = useRef(null);
-  const navigate = useNavigate();
   const sonNotif = useRef(null);
   const lastMessageId = useRef(null);
-
-  useEffect(() => {
-    if (Notification.permission !== 'granted') {
-      Notification.requestPermission();
-    }
-  }, []);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const storedUserRaw = localStorage.getItem('currentUser');
     setDebugInfo(`localStorage.getItem('currentUser') = ${storedUserRaw}`);
 
     if (!storedUserRaw) {
-      console.log("❌ Aucun currentUser → Redirection login");
-      setDebugInfo((prev) => prev + "\n❌ Aucun currentUser trouvé → redirection");
-      navigate('/auth-ouvrier');
+      setDebugInfo((prev) => prev + `\n❌ Aucun currentUser trouvé`);
       return;
     }
 
     try {
       const user = JSON.parse(storedUserRaw);
+
       if (!user.pseudo) {
-        console.log("❌ Pseudo manquant → Redirection login");
-        setDebugInfo((prev) => prev + "\n❌ Pseudo manquant → redirection");
-        navigate('/auth-ouvrier');
+        setDebugInfo((prev) => prev + `\n❌ Pseudo vide ou non défini`);
         return;
       }
 
       setPseudo(user.pseudo);
-      setDebugInfo((prev) => prev + `\n✅ Pseudo détecté : ${user.pseudo}`);
+      setDebugInfo((prev) => prev + `\n✅ Pseudo chargé : ${user.pseudo}`);
 
       const fetchMessages = async () => {
         const messagesRecus = await getMessages();
@@ -50,9 +41,7 @@ const ChatOuvrier = () => {
             (msg.pseudo === user.pseudo && msg.destinataire === 'Chef') ||
             (msg.pseudo === 'Chef' && msg.destinataire === user.pseudo)
         );
-        const sorted = filtered.sort(
-          (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-        );
+        const sorted = filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         setMessages(sorted);
 
         const last = sorted[sorted.length - 1];
@@ -70,11 +59,9 @@ const ChatOuvrier = () => {
       const interval = setInterval(fetchMessages, 10000);
       return () => clearInterval(interval);
     } catch (e) {
-      console.error("Erreur parsing localStorage :", e);
-      setDebugInfo((prev) => prev + "\n❌ Erreur parsing JSON localStorage");
-      navigate('/auth-ouvrier');
+      setDebugInfo((prev) => prev + `\n❌ Erreur JSON.parse : ${e.message}`);
     }
-  }, [navigate]);
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -125,11 +112,25 @@ const ChatOuvrier = () => {
 
   if (!pseudo) {
     return (
-      <div style={{ textAlign: 'center', marginTop: '100px' }}>
-        <h3>🔄 Chargement du chat...</h3>
-        <pre style={{ textAlign: 'left', maxWidth: '90%', margin: '0 auto', background: '#fff', color: '#000', padding: '10px', borderRadius: '12px' }}>
+      <div style={{ padding: 30, background: '#fff', color: '#000', minHeight: '100vh' }}>
+        <h2>🔍 DEBUG MODE</h2>
+        <p>On ne trouve pas le pseudo !</p>
+        <pre style={{
+          backgroundColor: '#f5f5f5',
+          padding: '15px',
+          borderRadius: '12px',
+          fontSize: '14px',
+          overflowWrap: 'break-word',
+          maxWidth: '100%',
+        }}>
           {debugInfo}
         </pre>
+        <button
+          style={{ marginTop: 20, padding: '10px 20px', borderRadius: 8 }}
+          onClick={() => navigate('/auth-ouvrier')}
+        >
+          🔁 Retour connexion
+        </button>
       </div>
     );
   }

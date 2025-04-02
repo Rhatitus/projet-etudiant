@@ -13,38 +13,33 @@ const ChatOuvrier = () => {
   const lastMessageId = useRef(null);
   const navigate = useNavigate();
 
-  // 🔐 Autoriser les notifications dès le début
+  // 🔐 Permission notif
   useEffect(() => {
     if (Notification.permission !== 'granted') {
-      Notification.requestPermission().then((permission) => {
-        console.log('🔔 Permission notifications :', permission);
+      Notification.requestPermission().then((p) => {
+        console.log('🔔 Permission notifications :', p);
       });
     }
   }, []);
 
-  // 🧠 Autoriser son + vibration après 1 clic
+  // 🧠 Activation son + vibration après 1 clic
   useEffect(() => {
-    const autoriserSonEtVib = () => {
-      if (sonNotif.current) {
-        sonNotif.current.play().catch(() => {});
-      }
-      if ('vibrate' in navigator) {
-        navigator.vibrate(1);
-      }
-      window.removeEventListener('click', autoriserSonEtVib);
+    const autoriser = () => {
+      sonNotif.current?.play().catch(() => {});
+      navigator.vibrate?.(1);
+      window.removeEventListener('click', autoriser);
     };
-    window.addEventListener('click', autoriserSonEtVib);
-    return () => window.removeEventListener('click', autoriserSonEtVib);
+    window.addEventListener('click', autoriser);
+    return () => window.removeEventListener('click', autoriser);
   }, []);
 
-  // 🔁 Récupération utilisateur + messages
+  // 🔁 Chargement utilisateur + messages
   useEffect(() => {
     const userRaw = localStorage.getItem("currentUser");
     console.log("📦 localStorage[currentUser] :", userRaw);
 
     if (!userRaw) {
-      console.log("⛔ Aucun utilisateur trouvé, redirection");
-      navigate("/auth-ouvrier");
+      navigate('/auth-ouvrier');
       return;
     }
 
@@ -53,8 +48,7 @@ const ChatOuvrier = () => {
       console.log("✅ Utilisateur récupéré :", user);
 
       if (!user.pseudo) {
-        console.log("⛔ Pseudo manquant");
-        navigate("/auth-ouvrier");
+        navigate('/auth-ouvrier');
         return;
       }
 
@@ -91,16 +85,14 @@ const ChatOuvrier = () => {
       return () => clearInterval(interval);
     } catch (error) {
       console.log("❌ Erreur JSON :", error);
-      navigate("/auth-ouvrier");
+      navigate('/auth-ouvrier');
     }
   }, [navigate]);
 
-  // 📜 Scroll auto en bas
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // ✉️ Envoi message
   const envoyerMessage = async () => {
     if (message.trim() === '' || !pseudo) return;
 
@@ -125,20 +117,17 @@ const ChatOuvrier = () => {
   const showNotification = (texte) => {
     if (Notification.permission === 'granted') {
       new Notification('📩 Nouveau message du chef', {
-        body: texte
+        body: texte,
       });
     }
 
-    if (sonNotif.current) {
-      sonNotif.current.play().catch(() => {
-        console.log("⚠️ Son bloqué");
-      });
+    try {
+      sonNotif.current?.play();
+    } catch {
+      console.log("⚠️ Son bloqué");
     }
 
-    if ('vibrate' in navigator) {
-      navigator.vibrate([200]);
-    }
-
+    navigator.vibrate?.([200]);
     console.log("🔔 Notif déclenchée :", texte);
   };
 
@@ -147,21 +136,23 @@ const ChatOuvrier = () => {
     navigate('/auth-ouvrier');
   };
 
-  // ✅ Nouveau : utiliser pseudoFinal si `pseudo` pas encore chargé
+  // ✅ Diagnostic pseudo
   const userRaw = localStorage.getItem("currentUser");
   const user = userRaw ? JSON.parse(userRaw) : null;
   const pseudoFinal = pseudo || (user && user.pseudo);
 
   if (!pseudoFinal) {
     return (
-      <div style={{ textAlign: 'center', marginTop: '100px' }}>
-        <h3>🔄 Chargement du chat...</h3>
+      <div style={{ textAlign: 'center', marginTop: '80px', color: 'white' }}>
+        <h3>🔍 Chargement...</h3>
+        <p>🛠️ Aucun pseudo trouvé.</p>
+        <p>📦 localStorage : {userRaw || "null"}</p>
       </div>
     );
   }
 
   return (
-    <div className="page-container">
+    <div className="page-container" style={{ border: '3px solid red' }}>
       <Header />
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
         <span><strong>👷 Connecté :</strong> {pseudoFinal}</span>

@@ -13,32 +13,49 @@ const ChatOuvrier = () => {
   const lastMessageId = useRef(null);
   const navigate = useNavigate();
 
-  // 🔊 Autoriser son après premier clic
+  // 🔓 Autoriser son/vibration après clic utilisateur
   useEffect(() => {
-    const autoriserSon = () => {
+    const autoriserInteractions = () => {
       if (sonNotif.current) {
         sonNotif.current.play().catch(() => {});
       }
-      window.removeEventListener('click', autoriserSon);
+      if ('vibrate' in navigator) {
+        navigator.vibrate(1);
+      }
+      window.removeEventListener('click', autoriserInteractions);
     };
-    window.addEventListener('click', autoriserSon);
-    return () => window.removeEventListener('click', autoriserSon);
+    window.addEventListener('click', autoriserInteractions);
+    return () => window.removeEventListener('click', autoriserInteractions);
   }, []);
 
-  // 🔔 Demande permission notification
+  // 🔔 Demander la permission des notifications
   useEffect(() => {
     if (Notification.permission !== 'granted') {
       Notification.requestPermission().then((permission) => {
-        console.log("🟡 Permission notifications :", permission);
+        console.log('🟡 Permission notifications :', permission);
       });
     }
   }, []);
 
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem('currentUser'));
-    if (!storedUser || !storedUser.pseudo) {
+    const storedUserRaw = localStorage.getItem('currentUser');
+
+    if (!storedUserRaw) {
+      alert("❌ Aucune session trouvée. Merci de vous reconnecter.");
       navigate('/auth-ouvrier');
-    } else {
+      return;
+    }
+
+    try {
+      const storedUser = JSON.parse(storedUserRaw);
+      console.log("✅ Utilisateur récupéré :", storedUser);
+
+      if (!storedUser.pseudo) {
+        alert("❌ Pseudo manquant. Merci de vous reconnecter.");
+        navigate('/auth-ouvrier');
+        return;
+      }
+
       setPseudo(storedUser.pseudo);
 
       const fetchMessages = async () => {
@@ -48,9 +65,7 @@ const ChatOuvrier = () => {
             (msg.pseudo === storedUser.pseudo && msg.destinataire === 'Chef') ||
             (msg.pseudo === 'Chef' && msg.destinataire === storedUser.pseudo)
         );
-        const sorted = filtered.sort(
-          (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-        );
+        const sorted = filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         setMessages(sorted);
 
         const last = sorted[sorted.length - 1];
@@ -65,8 +80,13 @@ const ChatOuvrier = () => {
       };
 
       fetchMessages();
-      const interval = setInterval(fetchMessages, 10000); // 🔁 toutes les 10 sec
+      const interval = setInterval(fetchMessages, 10000); // ✅ 10s = plus safe pour Firebase
       return () => clearInterval(interval);
+
+    } catch (error) {
+      alert("Erreur de session. Merci de vous reconnecter.");
+      console.error(error);
+      navigate('/auth-ouvrier');
     }
   }, [navigate]);
 
@@ -96,55 +116,24 @@ const ChatOuvrier = () => {
   };
 
   const showNotification = (texte) => {
-    console.log("🔔 Notif déclenchée :", texte);
-
-    // ✅ Notification système (si l'onglet est en arrière-plan)
     if (Notification.permission === 'granted') {
-      new Notification("📩 Nouveau message du chef", {
+      new Notification('📩 Nouveau message du chef', {
         body: texte,
         icon: '/icon.png',
       });
     }
 
-    // 📳 Vibration
-    if ('vibrate' in navigator) {
-      navigator.vibrate([200]);
-    }
-
-    // 🔊 Son
     if (sonNotif.current) {
       sonNotif.current.play().catch(() => {
         console.log("⚠️ Son bloqué");
       });
     }
 
-    // 🔴 Bulle visuelle personnalisée
-    const existing = document.getElementById('custom-banner');
-    if (existing) existing.remove();
+    if ('vibrate' in navigator) {
+      navigator.vibrate([200]);
+    }
 
-    const banner = document.createElement('div');
-    banner.id = 'custom-banner';
-    banner.innerHTML = `📩 Nouveau message du chef : ${texte}`;
-    Object.assign(banner.style, {
-      position: 'fixed',
-      top: '10px',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      background: '#ff6f61',
-      color: '#fff',
-      padding: '12px 20px',
-      borderRadius: '20px',
-      fontWeight: 'bold',
-      boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-      zIndex: 9999,
-      animation: 'popNotif 0.3s ease, fadeOut 0.5s ease 2.5s forwards',
-      fontSize: '15px',
-      maxWidth: '90%',
-      textAlign: 'center',
-    });
-
-    document.body.appendChild(banner);
-    setTimeout(() => banner.remove(), 3000);
+    console.log("🔔 Notif déclenchée :", texte);
   };
 
   const deconnexion = () => {
@@ -155,7 +144,7 @@ const ChatOuvrier = () => {
   if (!pseudo) {
     return (
       <div style={{ textAlign: 'center', marginTop: '100px' }}>
-        <h3>🔄 Chargement du chat...</h3>
+        <h3>⏳ Chargement du chat...</h3>
       </div>
     );
   }
@@ -206,7 +195,7 @@ const ChatOuvrier = () => {
         <div className="notif-bulle">✅ Message envoyé !</div>
       )}
 
-      {/* 🔊 Audio de notification */}
+      {/* 🔊 Son de notification */}
       <audio ref={sonNotif} src="/sounds/notification.mp3" preload="auto" />
     </div>
   );

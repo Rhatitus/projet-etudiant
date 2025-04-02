@@ -13,65 +13,72 @@ const ChatOuvrier = () => {
   const lastMessageId = useRef(null);
   const navigate = useNavigate();
 
-  // 🔓 Autoriser son/vibration après clic utilisateur
+  // 🔔 Demander la permission au chargement
   useEffect(() => {
-    const autoriserInteractions = () => {
+    if (Notification.permission !== 'granted') {
+      Notification.requestPermission().then((permission) => {
+        console.log('🔔 Permission notifications :', permission);
+      });
+    }
+  }, []);
+
+  // ✅ Pour débloquer son/vibration au premier clic
+  useEffect(() => {
+    const autoriser = () => {
       if (sonNotif.current) {
         sonNotif.current.play().catch(() => {});
       }
       if ('vibrate' in navigator) {
         navigator.vibrate(1);
       }
-      window.removeEventListener('click', autoriserInteractions);
+      window.removeEventListener('click', autoriser);
     };
-    window.addEventListener('click', autoriserInteractions);
-    return () => window.removeEventListener('click', autoriserInteractions);
+    window.addEventListener('click', autoriser);
+    return () => window.removeEventListener('click', autoriser);
   }, []);
 
-  // 🔔 Demander la permission des notifications
+  // 🎯 Chargement utilisateur + messages
   useEffect(() => {
-    if (Notification.permission !== 'granted') {
-      Notification.requestPermission().then((permission) => {
-        console.log('🟡 Permission notifications :', permission);
-      });
-    }
-  }, []);
+    const userRaw = localStorage.getItem("currentUser");
+    console.log("📦 localStorage[currentUser] :", userRaw);
 
-  useEffect(() => {
-    const storedUserRaw = localStorage.getItem('currentUser');
-
-    if (!storedUserRaw) {
-      alert("❌ Aucune session trouvée. Merci de vous reconnecter.");
-      navigate('/auth-ouvrier');
+    if (!userRaw) {
+      console.log("⛔ Aucun utilisateur trouvé, redirection");
+      navigate("/auth-ouvrier");
       return;
     }
 
     try {
-      const storedUser = JSON.parse(storedUserRaw);
-      console.log("✅ Utilisateur récupéré :", storedUser);
+      const user = JSON.parse(userRaw);
+      console.log("✅ Utilisateur récupéré :", user);
 
-      if (!storedUser.pseudo) {
-        alert("❌ Pseudo manquant. Merci de vous reconnecter.");
-        navigate('/auth-ouvrier');
+      if (!user.pseudo) {
+        console.log("⛔ Pseudo manquant");
+        navigate("/auth-ouvrier");
         return;
       }
 
-      setPseudo(storedUser.pseudo);
+      setPseudo(user.pseudo);
 
       const fetchMessages = async () => {
-        const messagesRecus = await getMessages();
-        const filtered = messagesRecus.filter(
+        const allMessages = await getMessages();
+
+        const filtered = allMessages.filter(
           (msg) =>
-            (msg.pseudo === storedUser.pseudo && msg.destinataire === 'Chef') ||
-            (msg.pseudo === 'Chef' && msg.destinataire === storedUser.pseudo)
+            (msg.pseudo === user.pseudo && msg.destinataire === "Chef") ||
+            (msg.pseudo === "Chef" && msg.destinataire === user.pseudo)
         );
-        const sorted = filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        const sorted = filtered.sort(
+          (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+        );
+
         setMessages(sorted);
 
         const last = sorted[sorted.length - 1];
         if (
           last &&
-          last.pseudo === 'Chef' &&
+          last.pseudo === "Chef" &&
           last.timestamp !== lastMessageId.current
         ) {
           showNotification(last.texte);
@@ -80,13 +87,12 @@ const ChatOuvrier = () => {
       };
 
       fetchMessages();
-      const interval = setInterval(fetchMessages, 10000); // ✅ 10s = plus safe pour Firebase
+      const interval = setInterval(fetchMessages, 10000); // 🔄 Moins agressif
       return () => clearInterval(interval);
 
     } catch (error) {
-      alert("Erreur de session. Merci de vous reconnecter.");
-      console.error(error);
-      navigate('/auth-ouvrier');
+      console.log("❌ Erreur JSON :", error);
+      navigate("/auth-ouvrier");
     }
   }, [navigate]);
 
@@ -118,8 +124,7 @@ const ChatOuvrier = () => {
   const showNotification = (texte) => {
     if (Notification.permission === 'granted') {
       new Notification('📩 Nouveau message du chef', {
-        body: texte,
-        icon: '/icon.png',
+        body: texte
       });
     }
 
@@ -142,9 +147,10 @@ const ChatOuvrier = () => {
   };
 
   if (!pseudo) {
+    console.log("⏳ Pseudo non chargé, attente...");
     return (
       <div style={{ textAlign: 'center', marginTop: '100px' }}>
-        <h3>⏳ Chargement du chat...</h3>
+        <h3>Chargement du chat ouvrier...</h3>
       </div>
     );
   }
@@ -195,7 +201,7 @@ const ChatOuvrier = () => {
         <div className="notif-bulle">✅ Message envoyé !</div>
       )}
 
-      {/* 🔊 Son de notification */}
+      {/* 🔊 Son de notif */}
       <audio ref={sonNotif} src="/sounds/notification.mp3" preload="auto" />
     </div>
   );

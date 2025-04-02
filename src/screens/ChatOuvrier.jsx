@@ -8,40 +8,28 @@ const ChatOuvrier = () => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [notifVisible, setNotifVisible] = useState(false);
-  const [debugInfo, setDebugInfo] = useState('');
   const messagesEndRef = useRef(null);
   const sonNotif = useRef(null);
   const lastMessageId = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedUserRaw = localStorage.getItem('currentUser');
-    setDebugInfo(`localStorage.getItem('currentUser') = ${storedUserRaw}`);
-
-    if (!storedUserRaw) {
-      setDebugInfo((prev) => prev + `\n❌ Aucun currentUser trouvé`);
-      return;
-    }
-
-    try {
-      const user = JSON.parse(storedUserRaw);
-
-      if (!user.pseudo) {
-        setDebugInfo((prev) => prev + `\n❌ Pseudo vide ou non défini`);
-        return;
-      }
-
-      setPseudo(user.pseudo);
-      setDebugInfo((prev) => prev + `\n✅ Pseudo chargé : ${user.pseudo}`);
+    const storedUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (!storedUser || !storedUser.pseudo) {
+      navigate('/auth-ouvrier');
+    } else {
+      setPseudo(storedUser.pseudo);
 
       const fetchMessages = async () => {
         const messagesRecus = await getMessages();
         const filtered = messagesRecus.filter(
           (msg) =>
-            (msg.pseudo === user.pseudo && msg.destinataire === 'Chef') ||
-            (msg.pseudo === 'Chef' && msg.destinataire === user.pseudo)
+            (msg.pseudo === storedUser.pseudo && msg.destinataire === 'Chef') ||
+            (msg.pseudo === 'Chef' && msg.destinataire === storedUser.pseudo)
         );
-        const sorted = filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const sorted = filtered.sort(
+          (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+        );
         setMessages(sorted);
 
         const last = sorted[sorted.length - 1];
@@ -58,10 +46,8 @@ const ChatOuvrier = () => {
       fetchMessages();
       const interval = setInterval(fetchMessages, 10000);
       return () => clearInterval(interval);
-    } catch (e) {
-      setDebugInfo((prev) => prev + `\n❌ Erreur JSON.parse : ${e.message}`);
     }
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -89,20 +75,46 @@ const ChatOuvrier = () => {
   };
 
   const showNotification = (texte) => {
-    if (Notification.permission === 'granted') {
-      new Notification('📩 Nouveau message du chef', {
-        body: texte,
-        icon: '/icon.png',
-      });
+    // 📳 Vibration
+    if ('vibrate' in navigator) {
+      navigator.vibrate([200]);
     }
 
+    // 🔊 Son
     if (sonNotif.current) {
       sonNotif.current.play().catch(() => {});
     }
 
-    if ('vibrate' in navigator) {
-      navigator.vibrate([200]);
-    }
+    // 📩 Affichage bannière animée
+    const existing = document.getElementById('custom-banner');
+    if (existing) existing.remove();
+
+    const banner = document.createElement('div');
+    banner.id = 'custom-banner';
+    banner.innerHTML = `📩 Nouveau message du chef : ${texte}`;
+    Object.assign(banner.style, {
+      position: 'fixed',
+      top: '10px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      background: '#ff6f61',
+      color: '#fff',
+      padding: '12px 20px',
+      borderRadius: '20px',
+      fontWeight: 'bold',
+      boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+      zIndex: 9999,
+      animation: 'popNotif 0.3s ease, fadeOut 0.5s ease 2.5s forwards',
+      fontSize: '15px',
+      maxWidth: '90%',
+      textAlign: 'center',
+    });
+
+    document.body.appendChild(banner);
+
+    setTimeout(() => {
+      banner.remove();
+    }, 3000);
   };
 
   const deconnexion = () => {
@@ -112,25 +124,8 @@ const ChatOuvrier = () => {
 
   if (!pseudo) {
     return (
-      <div style={{ padding: 30, background: '#fff', color: '#000', minHeight: '100vh' }}>
-        <h2>🔍 DEBUG MODE</h2>
-        <p>On ne trouve pas le pseudo !</p>
-        <pre style={{
-          backgroundColor: '#f5f5f5',
-          padding: '15px',
-          borderRadius: '12px',
-          fontSize: '14px',
-          overflowWrap: 'break-word',
-          maxWidth: '100%',
-        }}>
-          {debugInfo}
-        </pre>
-        <button
-          style={{ marginTop: 20, padding: '10px 20px', borderRadius: 8 }}
-          onClick={() => navigate('/auth-ouvrier')}
-        >
-          🔁 Retour connexion
-        </button>
+      <div style={{ textAlign: 'center', marginTop: '100px' }}>
+        <h3>🔄 Chargement du chat...</h3>
       </div>
     );
   }
@@ -181,6 +176,7 @@ const ChatOuvrier = () => {
         <div className="notif-bulle">✅ Message envoyé !</div>
       )}
 
+      {/* 🔊 Son de notif */}
       <audio ref={sonNotif} src="/sounds/notification.mp3" preload="auto" />
     </div>
   );

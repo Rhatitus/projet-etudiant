@@ -13,6 +13,27 @@ const ChatOuvrier = () => {
   const lastMessageId = useRef(null);
   const navigate = useNavigate();
 
+  // 🔊 Autoriser son après premier clic
+  useEffect(() => {
+    const autoriserSon = () => {
+      if (sonNotif.current) {
+        sonNotif.current.play().catch(() => {});
+      }
+      window.removeEventListener('click', autoriserSon);
+    };
+    window.addEventListener('click', autoriserSon);
+    return () => window.removeEventListener('click', autoriserSon);
+  }, []);
+
+  // 🔔 Demande permission notification
+  useEffect(() => {
+    if (Notification.permission !== 'granted') {
+      Notification.requestPermission().then((permission) => {
+        console.log("🟡 Permission notifications :", permission);
+      });
+    }
+  }, []);
+
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem('currentUser'));
     if (!storedUser || !storedUser.pseudo) {
@@ -38,7 +59,6 @@ const ChatOuvrier = () => {
           last.pseudo === 'Chef' &&
           last.timestamp !== lastMessageId.current
         ) {
-          console.log("🔔 Notif déclenchée avec message :", last.texte);
           showNotification(last.texte);
           lastMessageId.current = last.timestamp;
         }
@@ -76,18 +96,29 @@ const ChatOuvrier = () => {
   };
 
   const showNotification = (texte) => {
-    console.log("🔔 Notif déclenchée avec message :", texte);
+    console.log("🔔 Notif déclenchée :", texte);
 
+    // ✅ Notification système (si l'onglet est en arrière-plan)
+    if (Notification.permission === 'granted') {
+      new Notification("📩 Nouveau message du chef", {
+        body: texte,
+        icon: '/icon.png',
+      });
+    }
+
+    // 📳 Vibration
     if ('vibrate' in navigator) {
       navigator.vibrate([200]);
     }
 
+    // 🔊 Son
     if (sonNotif.current) {
       sonNotif.current.play().catch(() => {
         console.log("⚠️ Son bloqué");
       });
     }
 
+    // 🔴 Bulle visuelle personnalisée
     const existing = document.getElementById('custom-banner');
     if (existing) existing.remove();
 
@@ -113,10 +144,7 @@ const ChatOuvrier = () => {
     });
 
     document.body.appendChild(banner);
-
-    setTimeout(() => {
-      banner.remove();
-    }, 3000);
+    setTimeout(() => banner.remove(), 3000);
   };
 
   const deconnexion = () => {
@@ -178,6 +206,7 @@ const ChatOuvrier = () => {
         <div className="notif-bulle">✅ Message envoyé !</div>
       )}
 
+      {/* 🔊 Audio de notification */}
       <audio ref={sonNotif} src="/sounds/notification.mp3" preload="auto" />
     </div>
   );

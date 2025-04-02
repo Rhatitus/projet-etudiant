@@ -13,7 +13,6 @@ const ChatOuvrier = () => {
   const lastMessageId = useRef(null);
   const navigate = useNavigate();
 
-  // 🔔 Demander la permission au chargement
   useEffect(() => {
     if (Notification.permission !== 'granted') {
       Notification.requestPermission().then((permission) => {
@@ -22,22 +21,20 @@ const ChatOuvrier = () => {
     }
   }, []);
 
-  // ✅ Pour débloquer son/vibration au premier clic
   useEffect(() => {
-    const autoriser = () => {
+    const autoriserSonEtVib = () => {
       if (sonNotif.current) {
         sonNotif.current.play().catch(() => {});
       }
       if ('vibrate' in navigator) {
         navigator.vibrate(1);
       }
-      window.removeEventListener('click', autoriser);
+      window.removeEventListener('click', autoriserSonEtVib);
     };
-    window.addEventListener('click', autoriser);
-    return () => window.removeEventListener('click', autoriser);
+    window.addEventListener('click', autoriserSonEtVib);
+    return () => window.removeEventListener('click', autoriserSonEtVib);
   }, []);
 
-  // 🎯 Chargement utilisateur + messages
   useEffect(() => {
     const userRaw = localStorage.getItem("currentUser");
     console.log("📦 localStorage[currentUser] :", userRaw);
@@ -87,9 +84,8 @@ const ChatOuvrier = () => {
       };
 
       fetchMessages();
-      const interval = setInterval(fetchMessages, 10000); // 🔄 Moins agressif
+      const interval = setInterval(fetchMessages, 10000);
       return () => clearInterval(interval);
-
     } catch (error) {
       console.log("❌ Erreur JSON :", error);
       navigate("/auth-ouvrier");
@@ -146,11 +142,11 @@ const ChatOuvrier = () => {
     navigate('/auth-ouvrier');
   };
 
-  if (!pseudo) {
-    console.log("⏳ Pseudo non chargé, attente...");
+  // ✅ Important : attendre la valeur de pseudo === null uniquement
+  if (pseudo === null) {
     return (
       <div style={{ textAlign: 'center', marginTop: '100px' }}>
-        <h3>Chargement du chat ouvrier...</h3>
+        <h3>🔄 Chargement du chat...</h3>
       </div>
     );
   }

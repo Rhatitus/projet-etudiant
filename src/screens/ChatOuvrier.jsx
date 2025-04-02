@@ -38,13 +38,14 @@ const ChatOuvrier = () => {
           last.pseudo === 'Chef' &&
           last.timestamp !== lastMessageId.current
         ) {
+          console.log("🔔 Notif déclenchée avec message :", last.texte);
           showNotification(last.texte);
           lastMessageId.current = last.timestamp;
         }
       };
 
       fetchMessages();
-      const interval = setInterval(fetchMessages, 10000);
+      const interval = setInterval(fetchMessages, 10000); // 🔁 toutes les 10 sec
       return () => clearInterval(interval);
     }
   }, [navigate]);
@@ -75,17 +76,18 @@ const ChatOuvrier = () => {
   };
 
   const showNotification = (texte) => {
-    // 📳 Vibration
+    console.log("🔔 Notif déclenchée avec message :", texte);
+
     if ('vibrate' in navigator) {
       navigator.vibrate([200]);
     }
 
-    // 🔊 Son
     if (sonNotif.current) {
-      sonNotif.current.play().catch(() => {});
+      sonNotif.current.play().catch(() => {
+        console.log("⚠️ Son bloqué");
+      });
     }
 
-    // 📩 Affichage bannière animée
     const existing = document.getElementById('custom-banner');
     if (existing) existing.remove();
 
@@ -176,7 +178,6 @@ const ChatOuvrier = () => {
         <div className="notif-bulle">✅ Message envoyé !</div>
       )}
 
-      {/* 🔊 Son de notif */}
       <audio ref={sonNotif} src="/sounds/notification.mp3" preload="auto" />
     </div>
   );

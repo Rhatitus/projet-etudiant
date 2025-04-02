@@ -21,30 +21,29 @@ const ChatOuvrier = () => {
 
   useEffect(() => {
     const storedUserRaw = localStorage.getItem('currentUser');
-
     if (!storedUserRaw) {
-      console.log("❌ Aucun currentUser trouvé → redirection");
+      console.log("❌ Aucun currentUser → Redirection login");
       navigate('/auth-ouvrier');
       return;
     }
 
     try {
-      const storedUser = JSON.parse(storedUserRaw);
-      if (!storedUser.pseudo) {
-        console.log("❌ Pseudo absent dans currentUser → redirection");
+      const user = JSON.parse(storedUserRaw);
+      if (!user.pseudo) {
+        console.log("❌ Pseudo manquant → Redirection login");
         navigate('/auth-ouvrier');
         return;
       }
 
-      setPseudo(storedUser.pseudo);
-      console.log("✅ Pseudo chargé :", storedUser.pseudo);
+      setPseudo(user.pseudo);
+      console.log("✅ Pseudo chargé :", user.pseudo);
 
       const fetchMessages = async () => {
         const messagesRecus = await getMessages();
         const filtered = messagesRecus.filter(
           (msg) =>
-            (msg.pseudo === storedUser.pseudo && msg.destinataire === 'Chef') ||
-            (msg.pseudo === 'Chef' && msg.destinataire === storedUser.pseudo)
+            (msg.pseudo === user.pseudo && msg.destinataire === 'Chef') ||
+            (msg.pseudo === 'Chef' && msg.destinataire === user.pseudo)
         );
         const sorted = filtered.sort(
           (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
@@ -63,10 +62,10 @@ const ChatOuvrier = () => {
       };
 
       fetchMessages();
-      const interval = setInterval(fetchMessages, 1000);
+      const interval = setInterval(fetchMessages, 10000); //  10 sec et non sec, regarder onSnapshot() a la place pour pas que sa saute 
       return () => clearInterval(interval);
     } catch (e) {
-      console.error("Erreur parsing currentUser :", e);
+      console.error("Erreur parsing localStorage :", e);
       navigate('/auth-ouvrier');
     }
   }, [navigate]);
